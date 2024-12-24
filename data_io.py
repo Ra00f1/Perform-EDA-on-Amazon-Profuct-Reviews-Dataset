@@ -78,6 +78,15 @@ def read_and_connect_chunks(file_path=Test_Path):
 
 # Read the dataset with default max_rows being all rows
 def read_csv(file_name, file_path=Data_Path, max_rows=None):
+    """
+    Read the dataset with default max_rows being all rows
+
+    :param file_name: file name to read
+    :param file_path: path to the file
+    :param max_rows: maximum number of rows to read
+    :return: DataFrame
+    """
+
     print("Reading file ", file_name)
     file_path = file_path + file_name
     # only read the first 1000 rows
