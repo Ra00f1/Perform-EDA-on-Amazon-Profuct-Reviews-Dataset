@@ -6,7 +6,6 @@ from main import text_cleaning_and_preprocessing
 import dask.dataframe as dd
 
 Test_Path = "Data/"
-Data_Path = "D:/Projects/Amazon Review/"
 
 # download Amazon Customer Reviews Dataset from Kaggle
 def download_dataset():
@@ -19,10 +18,10 @@ def download_dataset():
 def unzip_data():
     file = "D:/Projects/Amazon Review/archive.zip"
     with zipfile.ZipFile(file, 'r') as zip_ref:
-        zip_ref.extractall(Data_Path)
+        zip_ref.extractall(Test_Path)
 
 
-def read_tsv(file_name, file_path=Data_Path, max_rows=None):
+def read_tsv(file_name, file_path=Test_Path, max_rows=None):
     print("Reading file ", file_name)
     file_path = file_path + file_name
     # only read the first 1000 rows
@@ -31,41 +30,12 @@ def read_tsv(file_name, file_path=Data_Path, max_rows=None):
     return df
 
 
-def process_in_chunks(file_name, file_path=Data_Path, chunk_size=10000, max_chunks=150, chunk_num=0):
-    chunks = []
-    file_path = file_path + file_name
-
-    try:
-        for chunk in pd.read_csv(file_path, sep="\t", on_bad_lines='warn', low_memory=False, chunksize=chunk_size):
-            if chunk_num >= max_chunks:
-                print("Max chunks reached.")
-                break
-
-            print(f"Processing chunk: {chunk_num + 1}")
-            chunk = text_cleaning_and_preprocessing(chunk)
-
-            if chunk is not None:
-                # Save the processed chunk to a new file
-                chunk.to_csv(
-                    Test_Path + f"Chunks/processed_{file_name}_{chunk_num + 1}.csv",
-                    index=False
-                )
-                chunks.append(chunk)
-            else:
-                print(f"Chunk {chunk_num + 1} had a problem. Skipping...")
-
-            chunk_num += 1
-
-    except pd.errors.EmptyDataError:
-        print("Reached the end of the file or encountered an empty chunk.")
-
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-
-    return pd.concat(chunks, ignore_index=True) if chunks else pd.DataFrame()
-
-
 def read_and_connect_chunks(file_path=Test_Path):
+    """
+    Read all the chunks and connect them together to form a single DataFrame for further processing.
+    :param file_path: path to the chunks
+    :return: DataFrame
+    """
     chunks = []
     file_path = file_path + "Chunks/"
     print(file_path)
@@ -77,9 +47,9 @@ def read_and_connect_chunks(file_path=Test_Path):
 
 
 # Read the dataset with default max_rows being all rows
-def read_csv(file_name, file_path=Data_Path, max_rows=None):
+def read_csv(file_name, file_path=Test_Path, max_rows=None):
     """
-    Read the dataset with default max_rows being all rows
+    Read the dataset with default max_rows being all rows if not specified.
 
     :param file_name: file name to read
     :param file_path: path to the file
@@ -95,7 +65,14 @@ def read_csv(file_name, file_path=Data_Path, max_rows=None):
     return df
 
 
-def get_dataset_shape(file_name, file_path=Data_Path, chunk_size=10000):
+def get_dataset_shape(file_name, file_path=Test_Path, chunk_size=10000):
+    """
+    Get the shape of the dataset by reading it in chunks.
+    :param file_name: file name to read
+    :param file_path: path to the file
+    :param chunk_size: size of each chunk
+    :return: tuple
+    """
     file_path = file_path + file_name
     total_rows = 0
     columns = None
@@ -122,10 +99,10 @@ def read_large_csv_with_dask(file_path, chunk_size=10000, text_column=None, max_
     Reads a large CSV file using Dask and processes a specific column if provided.
 
     Parameters:
-    - file_path: str - Path to the CSV file.
-    - chunk_size: int - Approximate number of rows per chunk.
-    - text_column: str - Name of the text column to process (optional).
-    - max_chunks: int - Maximum number of chunks to process (optional).
+    - :param file_path: str - Path to the CSV file.
+    - :param chunk_size: int - Approximate number of rows per chunk.
+    - :param text_column: str - Name of the text column to process (optional).
+    - :param max_chunks: int - Maximum number of chunks to process (optional).
 
     Yields:
     - pd.DataFrame: A chunk of data as a Pandas DataFrame.
