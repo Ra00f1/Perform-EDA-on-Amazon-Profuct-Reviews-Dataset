@@ -47,7 +47,7 @@ def read_and_connect_chunks(file_path=Test_Path):
 
 
 # Read the dataset with default max_rows being all rows
-def read_csv(file_name, file_path=Test_Path, max_rows=None):
+def read_csv(file_path, columns=None):
     """
     Read the dataset with default max_rows being all rows if not specified.
 
@@ -57,10 +57,13 @@ def read_csv(file_name, file_path=Test_Path, max_rows=None):
     :return: DataFrame
     """
 
-    print("Reading file ", file_name)
-    file_path = file_path + file_name
-    # only read the first 1000 rows
-    df = pd.read_csv(file_path, sep=",", on_bad_lines='warn', low_memory=False, nrows=max_rows)
+    print("Reading file ", file_path)
+    # only read columns that are needed if specified
+    if columns:
+        ddf = dd.read_csv(file_path, sep=",", on_bad_lines='warn', low_memory=False, usecols=columns, dtype={'product_id': 'object'})
+    else:
+        ddf = dd.read_csv(file_path, sep=",", on_bad_lines='warn', low_memory=False, dtype={'product_id': 'object'})
+    df = ddf.compute()
     print("File read successfully")
     return df
 
@@ -94,23 +97,40 @@ def get_dataset_shape(file_name, file_path=Test_Path, chunk_size=10000):
     return (total_rows, len(columns) if columns is not None else 0)
 
 
-def read_large_csv_with_dask(file_path, chunk_size=10000, text_column=None, max_chunks=None):
+def read_large_csv_with_dask(file_path, chunk_size=10000, columns=None, max_chunks=None):
     """
     Reads a large CSV file using Dask and processes a specific column if provided.
 
     Parameters:
     - :param file_path: str - Path to the CSV file.
     - :param chunk_size: int - Approximate number of rows per chunk.
-    - :param text_column: str - Name of the text column to process (optional).
+    - :param columns: str or list - Name(s) of the text column(s) to process (optional).
     - :param max_chunks: int - Maximum number of chunks to process (optional).
 
     Yields:
     - pd.DataFrame: A chunk of data as a Pandas DataFrame.
-    - list: A list of processed text from the specified column (if text_column is provided).
+    - list: A list of processed text from the specified column (if columns is provided).
     """
+    global text_list
     try:
+        # Ensure columns is a list
+        if isinstance(columns, str):
+            usecols = [columns]
+        elif isinstance(columns, list):
+            usecols = columns
+        else:
+            usecols = None
+
         # Load the CSV into a Dask DataFrame
-        ddf = dd.read_csv(file_path, blocksize=chunk_size, assume_missing=True)
+        ddf = dd.read_csv(
+            file_path,
+            blocksize=chunk_size,
+            assume_missing=True,
+            sep=",",
+            low_memory=False,
+            usecols=usecols,
+            dtype={'product_id': 'object'}  # Adjust dtype mapping as needed
+        )
 
         # Number of chunks to process
         total_chunks = max_chunks if max_chunks else ddf.npartitions
@@ -118,10 +138,16 @@ def read_large_csv_with_dask(file_path, chunk_size=10000, text_column=None, max_
         for i, partition in enumerate(ddf.to_delayed()[:total_chunks]):
             chunk = partition.compute()  # Convert the partition to a Pandas DataFrame
 
-            if text_column:
+            if columns:
                 # Ensure the specified column is string and handle NaNs
-                chunk[text_column] = chunk[text_column].fillna("").astype(str)
-                yield chunk, chunk[text_column].tolist()
+                if isinstance(columns, str):
+                    chunk[columns] = chunk[columns].fillna("").astype(str)
+                    text_list = chunk[columns].tolist()  # Convert the column to a list
+                elif isinstance(columns, list):
+                    for col in columns:
+                        chunk[col] = chunk[col].fillna("").astype(str)
+                    text_list = {col: chunk[col].tolist() for col in columns}
+                yield chunk, text_list
             else:
                 yield chunk, None
 

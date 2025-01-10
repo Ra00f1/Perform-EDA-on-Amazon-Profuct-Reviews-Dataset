@@ -22,12 +22,12 @@ import os
 from html import unescape
 from rake_nltk import Rake
 from sklearn.decomposition import LatentDirichletAllocation
-from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import data_io
 import matplotlib
 import Visualization
+from sklearn.feature_extraction.text import CountVectorizer
 
 matplotlib.use('TkAgg')  # Or use 'Agg' for non-interactive environments
 
@@ -242,8 +242,7 @@ def process_all_files():
         print("Done")
 
 
-# Write a funciton about reading the files
-def 
+# TODO: Write a function about reading the files
 
 
 if __name__ == '__main__':
@@ -261,8 +260,8 @@ if __name__ == '__main__':
     # data.to_csv(Test_Path + "cleaned_data_test_html.csv", index=False)
 #
     # # Process data in chunks when reading large files
-    data = data_io.process_in_chunks("amazon_reviews_us_Books_v1_02.tsv", Test_Path, chunk_size=10000, max_chunks=400,
-                              chunk_num=35)
+    # data = data_io.process_in_chunks("amazon_reviews_us_Books_v1_02.tsv", Test_Path, chunk_size=10000, max_chunks=400,
+    #                           chunk_num=35)
     # data.to_csv(Test_Path + "cleaned_data_test_html.csv", index=False)
     # # Analyze the sentiment of reviews and add polarity and subjectivity scores to the DataFrame
 #
@@ -272,59 +271,43 @@ if __name__ == '__main__':
     # data.to_csv(Test_Path + "cleaned_data_test_html.csv", index=False)
 #
     # Analyze sentiment of reviews and add the scores to the DataFrame
-    analyzer = SentimentIntensityAnalyzer()
-    data['sentiment'] = data['review_body'].apply(lambda x: analyzer.polarity_scores(x))
-    data['neg'] = data['sentiment'].apply(lambda x: x['neg'])
-    data['neu'] = data['sentiment'].apply(lambda x: x['neu'])
-    data['pos'] = data['sentiment'].apply(lambda x: x['pos'])
-    data['compound'] = data['sentiment'].apply(lambda x: x['compound'])
+    # analyzer = SentimentIntensityAnalyzer()
+    # data['sentiment'] = data['review_body'].apply(lambda x: analyzer.polarity_scores(x))
+    # data['neg'] = data['sentiment'].apply(lambda x: x['neg'])
+    # data['neu'] = data['sentiment'].apply(lambda x: x['neu'])
+    # data['pos'] = data['sentiment'].apply(lambda x: x['pos'])
+    # data['compound'] = data['sentiment'].apply(lambda x: x['compound'])
 #
     # # Save the cleaned data
     # data.to_csv(Test_Path + "cleaned_data_test_html.csv", index=False)
 
     # ---------------------------------------------------------------------------------------------------------------
 
-    # Load cleaned data
-    # data = data_io.read_csv("cleaned_data_test_html.csv", Test_Path)
-    # data_info(data)
-
-    # data = data_io.read_and_connect_chunks(Test_Path)
-#
-    # try:
-    #     word_cloud(data)
-    # except:
-    #     print("Word cloud error")
-    #     print(data['review_body'])
-#
-    data['polarity'], data['subjectivity'] = zip(*data['review_body'].apply(calculate_sentiment))
-    # print("Sentiment scores added (Polarity and Subjectivity)")
-#
-    # data.to_csv(Test_Path + "cleaned_data4.csv", index=False)
-#
-    # correlation_charts(data)
-#
-    # RAKE(data)
-
     file_name = "cleaned_data_test_html.csv"
-    # word_cloud_from_large_data(file_path)
 
-    # shape = data_io.get_dataset_shape("cleaned_data_test_html.csv", Test_Path)
+    file_path = Test_Path + file_name
+    text_column = ["star_rating"]
 
-    # print(shape)
+    data = data_io.read_csv(file_path, columns=text_column)
 
-    # correlation_charts(file_path)
-    # RAKE(file_path, max_chunks=10)
+    # make a pie chart of positive and negative and neutral reviews count
 
-    data = data_io.read_csv(file_name, Test_Path)
+    positive = data[data['star_rating'] >= 4]
+    negative = data[data['star_rating'] <= 2]
+    neutral = data[(data['star_rating'] == 3)]
 
-    # LDA_topic_modeling(data['review_body'].tolist())
+    positive_count = positive.shape[0]
+    negative_count = negative.shape[0]
+    neutral_count = neutral.shape[0]
 
-    # summarize_insights_and_visualize(data, num_keywords=50)
+    labels = ['Positive', 'Negative', 'Neutral']
 
-    # word_cloud(data)
+    sizes = [positive_count, negative_count, neutral_count]
 
-    # Print all the files in the Test_Path directory
-    for file in os.listdir(Test_Path):
-        print(file)
+    fig1, ax1 = plt.subplots()
+    ax1.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90)
+    ax1.axis('equal')
+
+    plt.show()
 
     print("Done")

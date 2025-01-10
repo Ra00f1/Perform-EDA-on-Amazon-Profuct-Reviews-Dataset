@@ -486,3 +486,209 @@ def summarize_insights_and_visualize(
 
     print("\nNegative Sentiment Insights:")
     print(negative_keywords)
+
+
+def bigrams(data):
+    # Fill missing values with an empty string
+    data['review_body'] = data['review_body'].fillna('')
+
+    # Initialize CountVectorizer for bigrams
+    cv = CountVectorizer(ngram_range=(2, 2))
+
+    # Fit and transform the review body text
+    X = cv.fit_transform(data['review_body'])
+
+    # Compute bigram frequencies
+    bigram_freq = X.sum(axis=0)
+    bigram_freq = [(word, bigram_freq[0, idx]) for word, idx in cv.vocabulary_.items()]
+    bigram_freq = sorted(bigram_freq, key=lambda x: x[1], reverse=True)
+
+    return bigram_freq
+
+
+def bigrams_by_sentiment_in_chunks(
+    file_path,
+    text_column,
+    sentiment_column,
+    chunk_size=10000,
+    max_chunks=None,
+    num_bigrams=15,
+):
+    """
+    Extract and plot bigram frequencies for positive and negative sentiments in chunks.
+
+    Parameters:
+    - file_path: str - Path to the CSV file.
+    - text_column: str - Name of the text column to process.
+    - sentiment_column: str - Name of the sentiment column to divide data.
+    - chunk_size: int - Number of rows per chunk.
+    - max_chunks: int - Maximum number of chunks to process (optional).
+    - num_bigrams: int - Number of top bigrams to display.
+
+    Returns:
+    - None: Displays bar plots of bigram frequencies for positive and negative sentiments.
+    """
+    positive_bigram_counter = Counter()
+    negative_bigram_counter = Counter()
+
+    try:
+        # Process the file in chunks
+        for i, (chunk, text_data) in enumerate(
+            data_io.read_large_csv_with_dask(file_path, chunk_size, [text_column, sentiment_column], max_chunks)
+        ):
+            print(f"Processing chunk {i + 1}...")
+
+            # Ensure sentiment column is numeric for comparison
+            chunk[sentiment_column] = pd.to_numeric(chunk[sentiment_column], errors="coerce")
+
+            # Split data into positive and negative based on sentiment threshold
+            positive_data = chunk.loc[chunk[sentiment_column] >= 4, text_column].tolist()
+            negative_data = chunk.loc[chunk[sentiment_column] <= 2, text_column].tolist()
+
+            # Create bigram counters for positive and negative reviews
+            cv = CountVectorizer(ngram_range=(2, 2))
+
+            if positive_data:
+                X_positive = cv.fit_transform(positive_data)
+                positive_bigram_freq = Counter(
+                    {word: X_positive[:, idx].sum() for word, idx in cv.vocabulary_.items()}
+                )
+                positive_bigram_counter.update(positive_bigram_freq)
+
+            if negative_data:
+                X_negative = cv.fit_transform(negative_data)
+                negative_bigram_freq = Counter(
+                    {word: X_negative[:, idx].sum() for word, idx in cv.vocabulary_.items()}
+                )
+                negative_bigram_counter.update(negative_bigram_freq)
+
+        # Prepare data for plotting
+        positive_bigrams = positive_bigram_counter.most_common(num_bigrams)
+        negative_bigrams = negative_bigram_counter.most_common(num_bigrams)
+
+        positive_df = pd.DataFrame(positive_bigrams, columns=["Bigram", "Frequency"])
+        negative_df = pd.DataFrame(negative_bigrams, columns=["Bigram", "Frequency"])
+
+        positive_df = positive_df.sort_values(by="Frequency", ascending=True)
+        negative_df = negative_df.sort_values(by="Frequency", ascending=True)
+
+        # delete the similar bigrams from both positive and negative
+        positive_exclusive_df = positive_df[~positive_df["Bigram"].isin(negative_df["Bigram"])]
+        negative_exclusive_df = negative_df[~negative_df["Bigram"].isin(positive_df["Bigram"])]
+
+        # Plot side-by-side bar graphs
+        fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+
+        # Positive bigrams
+        positive_exclusive_df.plot(kind="barh", x="Bigram", y="Frequency", ax=axes[0], color="green")
+        axes[0].set_title("Top Positive Bigrams")
+        axes[0].set_xlabel("Frequency")
+        axes[0].set_ylabel("Bigram")
+        axes[0].tick_params(axis="y", labelrotation=0)
+
+        # Negative bigrams
+        negative_exclusive_df.plot(kind="barh", x="Bigram", y="Frequency", ax=axes[1], color="red")
+        axes[1].set_title("Top Negative Bigrams")
+        axes[1].set_xlabel("Frequency")
+        axes[1].set_ylabel("Bigram")
+        axes[1].tick_params(axis="y", labelrotation=0)
+
+        plt.tight_layout()
+        plt.show()
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
+def triogram_by_sentiment_in_chunks(
+    file_path,
+    text_column,
+    sentiment_column,
+    chunk_size=10000,
+    max_chunks=None,
+    num_triograms=15,
+):
+    """
+    Extract and plot triogram frequencies for positive and negative sentiments in chunks.
+
+    Parameters:
+    - file_path: str - Path to the CSV file.
+    - text_column: str - Name of the text column to process.
+    - sentiment_column: str - Name of the sentiment column to divide data.
+    - chunk_size: int - Number of rows per chunk.
+    - max_chunks: int - Maximum number of chunks to process (optional).
+    - num_triograms: int - Number of top triograms to display.
+
+    Returns:
+    - None: Displays bar plots of triogram frequencies for positive and negative sentiments.
+    """
+    positive_trigram_counter = Counter()
+    negative_trigram_counter = Counter()
+
+    try:
+        # Process the file in chunks
+        for i, (chunk, text_data) in enumerate(
+            data_io.read_large_csv_with_dask(file_path, chunk_size, [text_column, sentiment_column], max_chunks)
+        ):
+            print(f"Processing chunk {i + 1}...")
+
+            # Ensure sentiment column is numeric for comparison
+            chunk[sentiment_column] = pd.to_numeric(chunk[sentiment_column], errors="coerce")
+
+            # Split data into positive and negative based on sentiment threshold
+            positive_data = chunk.loc[chunk[sentiment_column] >= 4, text_column].tolist()
+            negative_data = chunk.loc[chunk[sentiment_column] <= 2, text_column].tolist()
+
+            # Create trigram counters for positive and negative reviews
+            cv = CountVectorizer(ngram_range=(3, 3))
+
+            if positive_data:
+                X_positive = cv.fit_transform(positive_data)
+                positive_trigram_freq = Counter(
+                    {word: X_positive[:, idx].sum() for word, idx in cv.vocabulary_.items()}
+                )
+                positive_trigram_counter.update(positive_trigram_freq)
+
+            if negative_data:
+                X_negative = cv.fit_transform(negative_data)
+                negative_trigram_freq = Counter(
+                    {word: X_negative[:, idx].sum() for word, idx in cv.vocabulary_.items()}
+                )
+                negative_trigram_counter.update(negative_trigram_freq)
+
+        # Prepare data for plotting
+        positive_trigrams = positive_trigram_counter.most_common(num_triograms)
+        negative_trigrams = negative_trigram_counter.most_common(num_triograms)
+
+        positive_df = pd.DataFrame(positive_trigrams, columns=["Trigram", "Frequency"])
+        negative_df = pd.DataFrame(negative_trigrams, columns=["Trigram", "Frequency"])
+
+        positive_df = positive_df.sort_values(by="Frequency", ascending=True)
+        negative_df = negative_df.sort_values(by="Frequency", ascending=True)
+
+        # delete the similar trigrams from both positive and negative
+        positive_exclusive_df = positive_df[~positive_df["Trigram"].isin(negative_df["Trigram"])]
+        negative_exclusive_df = negative_df[~negative_df["Trigram"].isin(positive_df["Trigram"])]
+
+        # Plot side-by-side bar graphs
+        fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+
+        # Positive trigrams
+        positive_exclusive_df.plot(kind="barh", x="Trigram", y="Frequency", ax=axes[0], color="green")
+        axes[0].set_title("Top Positive Trigrams")
+        axes[0].set_xlabel("Frequency")
+        axes[0].set_ylabel("Trigram")
+        axes[0].tick_params(axis="y", labelrotation=0)
+
+        # Negative trigrams
+        negative_exclusive_df.plot(kind="barh", x="Trigram", y="Frequency", ax=axes[1], color="red")
+        axes[1].set_title("Top Negative Trigrams")
+        axes[1].set_xlabel("Frequency")
+        axes[1].set_ylabel("Trigram")
+        axes[1].tick_params(axis="y", labelrotation=0)
+
+        plt.tight_layout()
+        plt.show()
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
