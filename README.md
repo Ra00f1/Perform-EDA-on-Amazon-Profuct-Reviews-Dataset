@@ -5,7 +5,9 @@ This project is a stepping stone to learning how LLMs work. However, before divi
 
 ## Key Features
 Dataset: The project leverages the Amazon US Customer Reviews Dataset, which provides extensive text data with varying levels of quality.
+
 EDA Goals: To experiment with a variety of methods and visualizations to uncover helpful insights from the data.
+
 Scalability: The project is designed to work efficiently with large datasets by using chunk-based processing with Dask, ensuring memory-efficient operations on limited hardware.
 ## Challenges
 ### 1. Identifying Effective Analysis Methods
@@ -20,8 +22,11 @@ Dask was used for efficient reading and manipulation of large datasets.
 Core functions were designed to process chunks of data using a yield mechanism, ensuring only manageable portions of data are processed at a time.
 ## Project Goals
 Learn Text Analysis: Use the dataset to master text preprocessing and analysis techniques.
+
 Extract Insights: Identify trends, patterns, and anomalies in customer reviews.
+
 LLM Integration: Lay the foundation for transitioning the project to incorporate LLMs for advanced text understanding.
+
 UI Connection: An API has been added to prepare for integration with a simple Android application that will serve as the project’s user interface in the future.
 ## Outputs and Insights
 ### Sample Outputs
