@@ -1,5 +1,5 @@
 # Exploratory Data Analysis Project on Amazon US Customer Reviews Dataset
-This project is an exploratory data analysis (EDA) initiative that will eventually transform into a large language model (LLM) project. The dataset used is the Amazon US Customer Reviews Dataset, which includes a diverse range of review types. These reviews often include mistakes, mispronunciations, and even entries that hold little value for extracting helpful data about a book or writer.
+This project is an exploratory data analysis (EDA) initiative that will eventually transform into a large language model (LLM) project. The dataset used is the Amazon US Customer Reviews Dataset(https://www.kaggle.com/datasets/cynthiarempel/amazon-us-customer-reviews-dataset/data) , which includes a diverse range of review types. These reviews often include mistakes, mispronunciations, and even entries that hold little value for extracting helpful data about a book or writer.
 
 This project is a stepping stone to learning how LLMs work. However, before diving into LLM implementation, the goal is to gain a solid understanding of text data analysis and derive meaningful insights.
 
