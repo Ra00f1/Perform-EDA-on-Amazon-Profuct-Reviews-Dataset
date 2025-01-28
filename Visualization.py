@@ -1,6 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy
 import seaborn as sns
 from wordcloud import WordCloud
 from collections import Counter
@@ -10,6 +11,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 import data_io
 
+
 def categorize_sentiment(polarity):
     """
     Categorize the sentiment polarity score into positive, negative, or neutral.
@@ -17,7 +19,6 @@ def categorize_sentiment(polarity):
     :param polarity: float - The sentiment polarity score.
     :return: str - The sentiment category (Positive, Negative, or Neutral).
     """
-    print("Categorizing Sentiment")
     if polarity > 0:
         return 'Positive'
     elif polarity < 0:
@@ -26,7 +27,7 @@ def categorize_sentiment(polarity):
         return 'Neutral'
 
 
-def word_cloud_from_large_data(file_path, text_column='review_body', min_frequency=0, chunk_size=100000):
+def word_cloud_in_chunks(file_path, text_column='review_body', min_frequency=0, chunk_size=100000, max_chunks=None):
     """
     Generate a word cloud from a large dataset by reading the data in chunks.
     A word cloud is a visualization technique that displays the most frequent words in a text corpus. The size of each
@@ -45,7 +46,8 @@ def word_cloud_from_large_data(file_path, text_column='review_body', min_frequen
     word_freq = Counter()
     total_words = 0
 
-    for _, text_data in data_io.read_large_csv_with_dask(file_path, chunk_size=chunk_size, text_column=text_column):
+    for _, text_data in data_io.read_large_csv_with_dask(file_path, chunk_size=chunk_size, columns=text_column,
+                                                         max_chunks=max_chunks):
         # Tokenize the text data from the current chunk
         words = ' '.join(text_data).split()
 
@@ -54,7 +56,8 @@ def word_cloud_from_large_data(file_path, text_column='review_body', min_frequen
         total_words += len(words)
 
     # Filter out the words with low frequency
-    filtered_words = {word: freq / total_words for word, freq in word_freq.items() if freq / total_words > min_frequency}
+    filtered_words = {word: freq / total_words for word, freq in word_freq.items() if
+                      freq / total_words > min_frequency}
 
     # Generate the word cloud from the filtered words
     wordcloud = WordCloud(
@@ -72,7 +75,9 @@ def word_cloud_from_large_data(file_path, text_column='review_body', min_frequen
     plt.figure(figsize=(10, 5))
     plt.imshow(wordcloud, interpolation="bilinear")
     plt.axis('off')
-    plt.show()
+
+    plt.savefig('Output/wordcloud.png')
+    plt.close()
 
 
 def word_cloud(data, min_frequency=0):
@@ -107,10 +112,10 @@ def word_cloud(data, min_frequency=0):
     # Filter out the words with low frequency
     total_words = sum(word_freq_pos.values())
     filtered_positive_reviews = {word: freq / total_words for word, freq in word_freq_pos.items() if
-                      freq / total_words > min_frequency}
+                                 freq / total_words > min_frequency}
     total_words = sum(word_freq_neg.values())
     filtered_negative_reviews = {word: freq / total_words for word, freq in word_freq_neg.items() if
-                      freq / total_words > min_frequency}
+                                 freq / total_words > min_frequency}
 
     # Generate word cloud from the filtered words
     wordcloud_positive = WordCloud(
@@ -144,8 +149,6 @@ def word_cloud(data, min_frequency=0):
     axes[1].set_title("Word Cloud for Negative Reviews")
     axes[1].axis('off')
 
-    plt.show()
-
 
 def word_cloud_quick(data):
     """
@@ -176,36 +179,41 @@ def word_cloud_quick(data):
     plt.figure(figsize=(10, 5))
     plt.imshow(wordcloud, interpolation="bilinear")
     plt.axis('off')
-    plt.show()
 
 
-def correlation_charts(file_path, text_column=None, max_chunks=None):
+def correlation_charts_in_chunks(file_path, chunk_size=10000, max_chunks=None):
     """
     Generate correlation charts to visualize the relationship between sentiment, ratings, and other numerical columns.
-    This function reads the data in chunks to handle large datasets and generate the charts accordingly.
+    This function reads the data in chunks to handle large datasets and generates the charts accordingly.
 
     :param file_path: str - Path to the file containing the data.
-    :param text_column: str - Name of the text column containing the reviews.
+    :param text_column: str - Name of the text column containing the reviews (optional).
+    :param chunk_size: int - Number of rows to process per chunk.
     :param max_chunks: int - Maximum number of chunks to process.
     :return: None
     """
-    print("Generating Correlation Charts")
+    print("Generating Correlation Charts with Chunked Processing")
 
     correlation_data = []
-    for chunk, _ in data_io.read_large_csv_with_dask(file_path, text_column=text_column, max_chunks=max_chunks):
+
+    # Read and process the file in chunks
+    for chunk, _ in data_io.read_large_csv_with_dask(
+            file_path=file_path,
+            chunk_size=chunk_size,
+            columns=None,  # Load all columns
+            max_chunks=max_chunks
+    ):
         # Ensure required columns exist in the chunk
         required_columns = ['polarity', 'star_rating', 'helpful_votes', 'total_votes', 'subjectivity']
 
-        # Some of the columns contain missing values, so we need to fill them with NaN
         for col in required_columns:
             if col not in chunk.columns:
-                chunk[col] = np.nan  # Add missing columns with NaN
+                chunk[col] = np.nan
 
-        # Prepare necessary columns for correlation charts
         chunk['sentiment_category'] = chunk['polarity'].apply(categorize_sentiment)
         correlation_data.append(chunk)
 
-    # Concatenate all chunks into a single DataFrame for visualization
+    # Concatenate all chunks into a single DataFrame
     data = pd.concat(correlation_data, ignore_index=True)
 
     # Scatterplot for sentiment polarity vs. ratings
@@ -213,27 +221,35 @@ def correlation_charts(file_path, text_column=None, max_chunks=None):
     plt.title("Sentiment Polarity vs. Ratings")
     plt.xlabel("Polarity")
     plt.ylabel("Ratings")
-    plt.show()
+
+    plt.savefig('Output/Senti_vs_Rating.png')
+    plt.close()
 
     # Correlation heatmap
     correlation_matrix = data[['polarity', 'star_rating']].corr()
     sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm")
     plt.title("Correlation between Sentiment and Ratings")
-    plt.show()
+
+    plt.savefig('Output/Senti_vs_Rating_heatmap.png')
+    plt.close()
 
     # Bar chart of sentiment categories
     data['sentiment_category'].value_counts().plot(kind='bar', color=['green', 'gray', 'red'])
     plt.title("Distribution of Sentiment Categories")
     plt.xlabel("Sentiment")
     plt.ylabel("Count")
-    plt.show()
+
+    plt.savefig('Output/Senti_category.png')
+    plt.close()
 
     # Boxplot for sentiment polarity vs. ratings
     sns.boxplot(x=data['sentiment_category'], y=data['star_rating'], palette="viridis")
     plt.title("Ratings Distribution by Sentiment Category")
     plt.xlabel("Sentiment Category")
     plt.ylabel("Star Rating")
-    plt.show()
+
+    plt.savefig('Output/Rating_by_Senti.png')
+    plt.close()
 
     # Correlation heatmap for numerical columns
     correlation_columns = ['star_rating', 'helpful_votes', 'total_votes', 'polarity', 'subjectivity']
@@ -241,33 +257,41 @@ def correlation_charts(file_path, text_column=None, max_chunks=None):
     plt.figure(figsize=(8, 6))
     sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt='.2f', linewidths=0.5)
     plt.title("Correlation Heatmap: Ratings, Votes, and Sentiment")
-    plt.show()
+
+    plt.savefig('Output/Correlation_heatmap.png')
+    plt.close()
 
 
-def RAKE(file_path, text_column='review_body', max_chunks=None):
+def RAKE_in_chunks(file_path, text_column='review_body', sentiment_column='star_rating', chunk_size=10000,
+                   max_chunks=None):
     """
-    Perform keyword extraction using RAKE (Rapid Automatic Keyword Extraction) algorithm.
-    RAKE is a keyword extraction algorithm that automatically extracts keywords from text by analyzing the frequency of
-    word appearances and co-occurrences. It is particularly useful for identifying important keywords in text data.
+    Perform keyword extraction using RAKE (Rapid Automatic Keyword Extraction) algorithm on chunked data.
 
     :param file_path: str - Path to the file containing the data.
     :param text_column: str - Name of the text column containing the reviews.
+    :param sentiment_column: str - Name of the column containing sentiment ratings.
+    :param chunk_size: int - Number of rows to process per chunk.
     :param max_chunks: int - Maximum number of chunks to process.
     :return: None
     """
     high_rated_reviews = []
     all_reviews = []
 
-    for chunk, texts in data_io.read_large_csv_with_dask(file_path, text_column=text_column, max_chunks=max_chunks):
+    # Read and process the file in chunks
+    for chunk, _ in data_io.read_large_csv_with_dask(
+            file_path=file_path,
+            chunk_size=chunk_size,
+            columns=[text_column, sentiment_column],
+            max_chunks=max_chunks
+    ):
         # Filter high-rated reviews
-        chunk_high_rated = chunk[chunk['star_rating'] >= 4][text_column].dropna().str.strip()
+        chunk[sentiment_column] = pd.to_numeric(chunk[sentiment_column], errors='coerce')
+        chunk_high_rated = chunk[chunk[sentiment_column] >= 4][text_column].dropna().str.strip()
         chunk_all_reviews = chunk[text_column].dropna().str.strip()
 
-        # Only add non-empty and non-stopword-only reviews
         high_rated_reviews.extend(chunk_high_rated[chunk_high_rated != ""].tolist())
         all_reviews.extend(chunk_all_reviews[chunk_all_reviews != ""].tolist())
 
-    # Ensure there are valid reviews
     if not high_rated_reviews:
         print("No valid high-rated reviews found.")
         return
@@ -289,13 +313,15 @@ def RAKE(file_path, text_column='review_body', max_chunks=None):
         print("Top Keywords in High-Rated Reviews:")
         print(tfidf_scores.head(10))
 
-        # Visualize TF-IDF scores
         tfidf_scores.head(10).plot(kind='bar', figsize=(10, 5), color='skyblue')
         plt.title("Top Keywords in High-Rated Reviews (TF-IDF)")
         plt.xlabel("Keywords")
         plt.ylabel("TF-IDF Score")
         plt.xticks(rotation=45)
-        plt.show()
+
+
+        plt.savefig('Output/TFIDF.png')
+        plt.close()
 
     except ValueError as e:
         print(f"Error in TF-IDF Vectorizer: {e}")
@@ -315,7 +341,10 @@ def RAKE(file_path, text_column='review_body', max_chunks=None):
     plt.xlabel("RAKE Score")
     plt.ylabel("Keywords")
     plt.gca().invert_yaxis()
-    plt.show()
+
+
+    plt.savefig('Output/RAKE.png')
+    plt.close()
 
     # CountVectorizer for topic modeling
     try:
@@ -342,42 +371,90 @@ def RAKE(file_path, text_column='review_body', max_chunks=None):
         plt.xlabel("Topic")
         plt.ylabel("Number of Reviews")
         plt.xticks(rotation=0)
-        plt.show()
+
+
+        plt.savefig('Output/Topic.png')
+        plt.close()
 
     except ValueError as e:
         print(f"Error in LDA Topic Modeling: {e}")
 
 
-def LDA_topic_modeling(reviews, num_topics=5, num_keywords=10):
+def LDA_topic_modeling_in_chunks(file_path, text_column='review_body', num_topics=5, num_keywords=10, chunk_size=10000,
+                                 max_chunks=None):
     """
-    Perform topic modeling on reviews using LDA.
-    What is LDA?
-    Latent Dirichlet Allocation (LDA) is a generative probabilistic model for topic modeling. It assumes that each
-    document is a mixture of topics and that each word in the document is attributable to one of the document's topics.
-    LDA can be used to identify the main topics in a collection of text data.
+    Perform topic modeling on reviews using LDA with chunked processing for large datasets.
 
     Parameters:
-    - reviews: list of str - The text data for topic modeling.
+    - file_path: str - Path to the CSV file containing the reviews.
+    - text_column: str - Column name containing the reviews.
     - num_topics: int - Number of topics to extract.
     - num_keywords: int - Number of keywords to display for each topic.
+    - chunk_size: int - Number of rows to process per chunk.
+    - max_chunks: int - Maximum number of chunks to process (optional).
 
     Returns:
     - None
     """
-    print("-" * 100)
-    print("Performing Topic Modeling using LDA")
-    # Step 1: Clean the input data
-    print("Cleaning the input data")
-    reviews = [review if isinstance(review, str) else "" for review in reviews]  # Replace non-strings with empty strings
-    reviews = [review for review in reviews if review.strip()]  # Remove empty or whitespace-only strings
+    from sklearn.feature_extraction.text import CountVectorizer
+    from sklearn.decomposition import LatentDirichletAllocation
+    import pandas as pd
+    import matplotlib.pyplot as plt
 
-    # Step 2: Convert text to document-term matrix
-    print("Converting text to document-term matrix")
+    print("-" * 100)
+    print("Performing Topic Modeling using LDA with Chunked Processing")
+
+    # Step 1: Build a global vocabulary
+    print("Building global vocabulary")
     vectorizer = CountVectorizer(stop_words='english', max_features=1000)
-    dtm = vectorizer.fit_transform(reviews)
+    reviews_list = []
+
+    # First pass to collect reviews for vocabulary building
+    for chunk, _ in data_io.read_large_csv_with_dask(
+            file_path=file_path,
+            chunk_size=chunk_size,
+            columns=text_column,
+            max_chunks=max_chunks
+    ):
+        reviews = chunk[text_column].fillna("").astype(str).tolist()
+        reviews = [review.strip() for review in reviews if review.strip()]  # Remove empty or whitespace-only strings
+        reviews_list.extend(reviews)
+
+    if not reviews_list:
+        print("No valid reviews found.")
+        return
+
+    # Fit the vectorizer to the global reviews list
+    vectorizer.fit(reviews_list)
+    print(f"Vocabulary size: {len(vectorizer.get_feature_names_out())}")
+
+    # Step 2: Process data in chunks with the global vocabulary
+    print("Processing data in chunks with the global vocabulary")
+    dtm_list = []
+
+    for chunk, _ in data_io.read_large_csv_with_dask(
+            file_path=file_path,
+            chunk_size=chunk_size,
+            columns=text_column,
+            max_chunks=max_chunks
+    ):
+        reviews = chunk[text_column].fillna("").astype(str).tolist()
+        reviews = [review.strip() for review in reviews if review.strip()]  # Remove empty or whitespace-only strings
+
+        if reviews:
+            dtm_chunk = vectorizer.transform(reviews)  # Use the global vocabulary
+            dtm_list.append(dtm_chunk)
+
+    # Combine all chunked DTM matrices
+    if not dtm_list:
+        print("No valid reviews found after chunk processing.")
+        return
+
+    dtm = scipy.sparse.vstack(dtm_list)  # Combine matrices with consistent shapes
+    print(f"Final DTM shape: {dtm.shape}")
 
     # Step 3: Apply LDA
-    print("Applying Latent Dirichlet Allocation( )")
+    print("Applying Latent Dirichlet Allocation (LDA)")
     lda = LatentDirichletAllocation(n_components=num_topics, random_state=42)
     lda.fit(dtm)
 
@@ -393,6 +470,7 @@ def LDA_topic_modeling(reviews, num_topics=5, num_keywords=10):
         topics[f"Topic {topic_idx + 1}"] = top_keywords
 
     # Step 5: Visualize Topic Distributions
+    print("Visualizing Topic Distributions")
     doc_topic_matrix = lda.transform(dtm)
     dominant_topics = pd.DataFrame(doc_topic_matrix).idxmax(axis=1).value_counts()
 
@@ -403,51 +481,79 @@ def LDA_topic_modeling(reviews, num_topics=5, num_keywords=10):
     plt.ylabel("Number of Reviews")
     plt.xticks(range(len(topics)), labels=topics.keys(), rotation=45)
     plt.tight_layout()
-    plt.show()
 
 
-def summarize_insights_and_visualize(
-    data, text_column='review_body', sentiment_column='star_rating', num_keywords=10
+    plt.savefig('Output/Topic_distribution.png')
+    plt.close()
+
+
+def summarize_insights_and_visualize_in_chunks(
+        file_path, text_column='review_body', sentiment_column='star_rating', num_keywords=10, chunk_size=10000,
+        max_chunks=None
 ):
     """
-    Summarize actionable insights by extracting and visualizing top keywords for positive and negative sentiments.
-    This function uses TF-IDF to extract keywords from reviews and visualize the top keywords for positive and negative
-    sentiment ratings. It also displays word clouds for positive and negative keywords to provide a visual representation
-    of the insights.
+    Summarize actionable insights by extracting and visualizing top keywords for positive and negative sentiments,
+    processing the data in chunks using Dask.
 
     Parameters:
-    - data: pd.DataFrame - The dataset containing reviews and sentiment ratings.
+    - file_path: str - Path to the CSV file.
     - text_column: str - The column containing review text.
     - sentiment_column: str - The column containing sentiment ratings.
     - num_keywords: int - Number of top keywords to display.
+    - chunk_size: int - Approximate number of rows per chunk.
+    - max_chunks: int - Maximum number of chunks to process (optional).
 
     Returns:
     - None
     """
-    # Step 1: Filter and clean data
-    data[text_column] = data[text_column].fillna("").astype(str)  # Replace NaN with empty strings
+    from collections import Counter
+    import matplotlib.pyplot as plt
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    import pandas as pd
 
-    # Split reviews into positive and negative sentiments
-    positive_reviews = data[data[sentiment_column] >= 4][text_column].tolist()
-    negative_reviews = data[data[sentiment_column] <= 2][text_column].tolist()
+    # Initialize counters for TF-IDF keyword aggregation
+    positive_counter = Counter()
+    negative_counter = Counter()
 
-    # Step 2: Define TF-IDF Vectorizer
-    tfidf = TfidfVectorizer(max_features=100, stop_words='english', ngram_range=(1, 2))
+    # Process the file in chunks
+    for chunk, _ in data_io.read_large_csv_with_dask(
+            file_path=file_path,
+            chunk_size=chunk_size,
+            columns=[text_column, sentiment_column],
+            max_chunks=max_chunks
+    ):
+        chunk[sentiment_column] = pd.to_numeric(chunk[sentiment_column], errors='coerce')
 
-    # Step 3: Extract keywords for positive reviews
-    positive_matrix = tfidf.fit_transform(positive_reviews)
-    positive_keywords = pd.DataFrame(positive_matrix.toarray(), columns=tfidf.get_feature_names_out()).sum().sort_values(ascending=False)
+        # Filter and clean the chunk
+        positive_reviews = chunk[chunk[sentiment_column] >= 4][text_column].tolist()
+        negative_reviews = chunk[chunk[sentiment_column] <= 2][text_column].tolist()
 
-    # Step 4: Extract keywords for negative reviews
-    negative_matrix = tfidf.fit_transform(negative_reviews)
-    negative_keywords = pd.DataFrame(negative_matrix.toarray(), columns=tfidf.get_feature_names_out()).sum().sort_values(ascending=False)
+        # Define TF-IDF Vectorizer
+        tfidf = TfidfVectorizer(max_features=100, stop_words='english', ngram_range=(1, 2))
 
-    # Step 5: Reduce overlap between positive and negative keywords
-    # How does it do that?
+        # Extract keywords for positive reviews
+        if positive_reviews:
+            positive_matrix = tfidf.fit_transform(positive_reviews)
+            positive_keywords = pd.DataFrame(
+                positive_matrix.toarray(), columns=tfidf.get_feature_names_out()
+            ).sum().sort_values(ascending=False)
+            positive_counter.update(positive_keywords.to_dict())
+
+        # Extract keywords for negative reviews
+        if negative_reviews:
+            negative_matrix = tfidf.fit_transform(negative_reviews)
+            negative_keywords = pd.DataFrame(
+                negative_matrix.toarray(), columns=tfidf.get_feature_names_out()
+            ).sum().sort_values(ascending=False)
+            negative_counter.update(negative_keywords.to_dict())
+
+    # Convert counters to sorted keyword lists
+    positive_keywords = pd.Series(positive_counter).sort_values(ascending=False)
+    negative_keywords = pd.Series(negative_counter).sort_values(ascending=False)
+
+    # Reduce overlap between positive and negative keywords
     positive_set = set(positive_keywords.head(2 * num_keywords).index)
     negative_set = set(negative_keywords.head(2 * num_keywords).index)
-
-    # Removing the keywords that are common between positive and negative reviews.
     exclusive_positive = positive_set - negative_set
     exclusive_negative = negative_set - positive_set
 
@@ -455,7 +561,7 @@ def summarize_insights_and_visualize(
     positive_keywords = positive_keywords[positive_keywords.index.isin(exclusive_positive)].head(num_keywords)
     negative_keywords = negative_keywords[negative_keywords.index.isin(exclusive_negative)].head(num_keywords)
 
-    # Step 6: Visualize the results
+    # Visualize the results
     fig, axes = plt.subplots(1, 2, figsize=(15, 6))
 
     # Positive sentiment keywords
@@ -473,13 +579,12 @@ def summarize_insights_and_visualize(
     axes[1].tick_params(axis='x', rotation=45)
 
     plt.tight_layout()
-    plt.show()
 
-    # Step 7: Show word cloud for positive and negative keywords
-    word_cloud_quick(positive_keywords.index)
-    word_cloud_quick(negative_keywords.index)
 
-    # Step 8: Summarize actionable insights
+    plt.savefig('Output/Insights.png')
+    plt.close()
+
+    # Summarize actionable insights
     print("Actionable Insights:")
     print("\nPositive Sentiment Insights:")
     print(positive_keywords)
@@ -488,31 +593,13 @@ def summarize_insights_and_visualize(
     print(negative_keywords)
 
 
-def bigrams(data):
-    # Fill missing values with an empty string
-    data['review_body'] = data['review_body'].fillna('')
-
-    # Initialize CountVectorizer for bigrams
-    cv = CountVectorizer(ngram_range=(2, 2))
-
-    # Fit and transform the review body text
-    X = cv.fit_transform(data['review_body'])
-
-    # Compute bigram frequencies
-    bigram_freq = X.sum(axis=0)
-    bigram_freq = [(word, bigram_freq[0, idx]) for word, idx in cv.vocabulary_.items()]
-    bigram_freq = sorted(bigram_freq, key=lambda x: x[1], reverse=True)
-
-    return bigram_freq
-
-
 def bigrams_by_sentiment_in_chunks(
-    file_path,
-    text_column,
-    sentiment_column,
-    chunk_size=10000,
-    max_chunks=None,
-    num_bigrams=15,
+        file_path,
+        text_column,
+        sentiment_column,
+        chunk_size=10000,
+        max_chunks=None,
+        num_bigrams=15,
 ):
     """
     Extract and plot bigram frequencies for positive and negative sentiments in chunks.
@@ -534,7 +621,7 @@ def bigrams_by_sentiment_in_chunks(
     try:
         # Process the file in chunks
         for i, (chunk, text_data) in enumerate(
-            data_io.read_large_csv_with_dask(file_path, chunk_size, [text_column, sentiment_column], max_chunks)
+                data_io.read_large_csv_with_dask(file_path, chunk_size, [text_column, sentiment_column], max_chunks)
         ):
             print(f"Processing chunk {i + 1}...")
 
@@ -594,19 +681,22 @@ def bigrams_by_sentiment_in_chunks(
         axes[1].tick_params(axis="y", labelrotation=0)
 
         plt.tight_layout()
-        plt.show()
+
+
+        plt.savefig('Output/Bigram.png')
+        plt.close()
 
     except Exception as e:
         print(f"An error occurred: {e}")
 
 
-def triogram_by_sentiment_in_chunks(
-    file_path,
-    text_column,
-    sentiment_column,
-    chunk_size=10000,
-    max_chunks=None,
-    num_triograms=15,
+def trigrams_by_sentiment_in_chunks(
+        file_path,
+        text_column,
+        sentiment_column,
+        chunk_size=10000,
+        max_chunks=None,
+        num_triograms=15,
 ):
     """
     Extract and plot triogram frequencies for positive and negative sentiments in chunks.
@@ -628,7 +718,7 @@ def triogram_by_sentiment_in_chunks(
     try:
         # Process the file in chunks
         for i, (chunk, text_data) in enumerate(
-            data_io.read_large_csv_with_dask(file_path, chunk_size, [text_column, sentiment_column], max_chunks)
+                data_io.read_large_csv_with_dask(file_path, chunk_size, [text_column, sentiment_column], max_chunks)
         ):
             print(f"Processing chunk {i + 1}...")
 
@@ -688,7 +778,10 @@ def triogram_by_sentiment_in_chunks(
         axes[1].tick_params(axis="y", labelrotation=0)
 
         plt.tight_layout()
-        plt.show()
+
+
+        plt.savefig('Output/Trigram.png')
+        plt.close()
 
     except Exception as e:
         print(f"An error occurred: {e}")

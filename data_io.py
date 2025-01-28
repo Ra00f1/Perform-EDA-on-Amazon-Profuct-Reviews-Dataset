@@ -2,7 +2,6 @@ import os
 import zipfile
 import pandas as pd
 import kagglehub
-from main import text_cleaning_and_preprocessing
 import dask.dataframe as dd
 
 Test_Path = "Data/"
