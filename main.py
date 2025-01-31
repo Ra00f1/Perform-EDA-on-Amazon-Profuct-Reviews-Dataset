@@ -61,8 +61,14 @@ def calculate_sentiment(text):
 # them etc.
 # this function is called by the one_and_done endpoint and when it starts running it will send a response back to the
 # user that the operation has started.
-def one_and_done():
+def one_and_done(filename):
     print("Starting the operation...")
+    output_path = "Output/"
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
+    os.makedirs(output_path + filename)
+    output_path = output_path + filename + "/"
     # data = data_io.read_tsv("amazon_reviews_us_Books_v1_02.tsv", Test_Path)
 #
     # data = text_cleaning_and_preprocessing(data)
@@ -74,54 +80,61 @@ def one_and_done():
     Visualization.correlation_charts_in_chunks(
         file_path='C:/Projects/Perform-EDA-on-textual-data/Data/cleaned_data_test_html.csv',
         chunk_size=10000,
-        max_chunks=500
+        max_chunks=500,
+        output_path=output_path
     )
 
     Visualization.word_cloud_in_chunks(
         file_path='C:/Projects/Perform-EDA-on-textual-data/Data/cleaned_data_test_html.csv',
         text_column='review_body',
         chunk_size=10000,
-        max_chunks=500
+        max_chunks=500,
+        output_path=output_path
     )
 
-    Visualization.RAKE_in_chunks(
-        file_path='C:/Projects/Perform-EDA-on-textual-data/Data/cleaned_data_test_html.csv',
-        text_column='review_body',
-        chunk_size=10000,
-        max_chunks=500
-    )
-
-    Visualization.LDA_topic_modeling_in_chunks(
-        file_path='C:/Projects/Perform-EDA-on-textual-data/Data/cleaned_data_test_html.csv',
-        text_column='review_body',
-        chunk_size=10000,
-        max_chunks=500
-    )
-
-    Visualization.summarize_insights_and_visualize_in_chunks(
-        file_path='C:/Projects/Perform-EDA-on-textual-data/Data/cleaned_data_test_html.csv',
-        text_column='review_body',
-        sentiment_column='star_rating',
-        num_keywords=10,
-        chunk_size=10000,
-        max_chunks=10
-    )
-
-    Visualization.bigrams_by_sentiment_in_chunks(
-        file_path='C:/Projects/Perform-EDA-on-textual-data/Data/cleaned_data_test_html.csv',
-        text_column='review_body',
-        sentiment_column='star_rating',
-        chunk_size=10000,
-        max_chunks=500
-    )
-
-    Visualization.trigrams_by_sentiment_in_chunks(
-        file_path='C:/Projects/Perform-EDA-on-textual-data/Data/cleaned_data_test_html.csv',
-        text_column='review_body',
-        sentiment_column='star_rating',
-        chunk_size=10000,
-        max_chunks=500
-    )
+    # Visualization.RAKE_in_chunks(
+    #     file_path='C:/Projects/Perform-EDA-on-textual-data/Data/cleaned_data_test_html.csv',
+    #     text_column='review_body',
+    #     chunk_size=10000,
+    #     max_chunks=500,
+    #     output_path=output_path
+    # )
+#
+    # Visualization.LDA_topic_modeling_in_chunks(
+    #     file_path='C:/Projects/Perform-EDA-on-textual-data/Data/cleaned_data_test_html.csv',
+    #     text_column='review_body',
+    #     chunk_size=10000,
+    #     max_chunks=500,
+    #     output_path=output_path
+    # )
+#
+    # Visualization.summarize_insights_and_visualize_in_chunks(
+    #     file_path='C:/Projects/Perform-EDA-on-textual-data/Data/cleaned_data_test_html.csv',
+    #     text_column='review_body',
+    #     sentiment_column='star_rating',
+    #     num_keywords=10,
+    #     chunk_size=10000,
+    #     max_chunks=10,
+    #     output_path=output_path
+    # )
+#
+    # Visualization.bigrams_by_sentiment_in_chunks(
+    #     file_path='C:/Projects/Perform-EDA-on-textual-data/Data/cleaned_data_test_html.csv',
+    #     text_column='review_body',
+    #     sentiment_column='star_rating',
+    #     chunk_size=10000,
+    #     max_chunks=500,
+    #     output_path=output_path
+    # )
+#
+    # Visualization.trigrams_by_sentiment_in_chunks(
+    #     file_path='C:/Projects/Perform-EDA-on-textual-data/Data/cleaned_data_test_html.csv',
+    #     text_column='review_body',
+    #     sentiment_column='star_rating',
+    #     chunk_size=10000,
+    #     max_chunks=500,
+    #     output_path=output_path
+    # )
 
     print("Done")
 

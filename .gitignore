@@ -153,3 +153,4 @@ cython_debug/
 Data/
 Output/
 Test Data/
+password.txt

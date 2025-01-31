@@ -10,6 +10,8 @@ from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 import data_io
+import os
+import datetime
 
 
 def categorize_sentiment(polarity):
@@ -27,7 +29,7 @@ def categorize_sentiment(polarity):
         return 'Neutral'
 
 
-def word_cloud_in_chunks(file_path, text_column='review_body', min_frequency=0, chunk_size=100000, max_chunks=None):
+def word_cloud_in_chunks(file_path, text_column='review_body', min_frequency=0, chunk_size=100000, max_chunks=None, output_path='output/'):
     """
     Generate a word cloud from a large dataset by reading the data in chunks.
     A word cloud is a visualization technique that displays the most frequent words in a text corpus. The size of each
@@ -76,7 +78,7 @@ def word_cloud_in_chunks(file_path, text_column='review_body', min_frequency=0, 
     plt.imshow(wordcloud, interpolation="bilinear")
     plt.axis('off')
 
-    plt.savefig('Output/wordcloud.png')
+    plt.savefig(output_path + 'wordcloud.png')
     plt.close()
 
 
@@ -181,7 +183,7 @@ def word_cloud_quick(data):
     plt.axis('off')
 
 
-def correlation_charts_in_chunks(file_path, chunk_size=10000, max_chunks=None):
+def correlation_charts_in_chunks(file_path, chunk_size=10000, max_chunks=None, output_path='output/'):
     """
     Generate correlation charts to visualize the relationship between sentiment, ratings, and other numerical columns.
     This function reads the data in chunks to handle large datasets and generates the charts accordingly.
@@ -222,7 +224,7 @@ def correlation_charts_in_chunks(file_path, chunk_size=10000, max_chunks=None):
     plt.xlabel("Polarity")
     plt.ylabel("Ratings")
 
-    plt.savefig('Output/Senti_vs_Rating.png')
+    plt.savefig(output_path + 'Senti_vs_Rating.png')
     plt.close()
 
     # Correlation heatmap
@@ -230,7 +232,7 @@ def correlation_charts_in_chunks(file_path, chunk_size=10000, max_chunks=None):
     sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm")
     plt.title("Correlation between Sentiment and Ratings")
 
-    plt.savefig('Output/Senti_vs_Rating_heatmap.png')
+    plt.savefig(output_path + 'Senti_vs_Rating_heatmap.png')
     plt.close()
 
     # Bar chart of sentiment categories
@@ -239,7 +241,7 @@ def correlation_charts_in_chunks(file_path, chunk_size=10000, max_chunks=None):
     plt.xlabel("Sentiment")
     plt.ylabel("Count")
 
-    plt.savefig('Output/Senti_category.png')
+    plt.savefig(output_path + 'Senti_category.png')
     plt.close()
 
     # Boxplot for sentiment polarity vs. ratings
@@ -248,7 +250,7 @@ def correlation_charts_in_chunks(file_path, chunk_size=10000, max_chunks=None):
     plt.xlabel("Sentiment Category")
     plt.ylabel("Star Rating")
 
-    plt.savefig('Output/Rating_by_Senti.png')
+    plt.savefig(output_path + 'Rating_by_Senti.png')
     plt.close()
 
     # Correlation heatmap for numerical columns
@@ -258,12 +260,12 @@ def correlation_charts_in_chunks(file_path, chunk_size=10000, max_chunks=None):
     sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt='.2f', linewidths=0.5)
     plt.title("Correlation Heatmap: Ratings, Votes, and Sentiment")
 
-    plt.savefig('Output/Correlation_heatmap.png')
+    plt.savefig(output_path + 'Correlation_heatmap.png')
     plt.close()
 
 
 def RAKE_in_chunks(file_path, text_column='review_body', sentiment_column='star_rating', chunk_size=10000,
-                   max_chunks=None):
+                   max_chunks=None, output_path='output/'):
     """
     Perform keyword extraction using RAKE (Rapid Automatic Keyword Extraction) algorithm on chunked data.
 
@@ -319,8 +321,7 @@ def RAKE_in_chunks(file_path, text_column='review_body', sentiment_column='star_
         plt.ylabel("TF-IDF Score")
         plt.xticks(rotation=45)
 
-
-        plt.savefig('Output/TFIDF.png')
+        plt.savefig(output_path + 'TFIDF.png')
         plt.close()
 
     except ValueError as e:
@@ -343,7 +344,7 @@ def RAKE_in_chunks(file_path, text_column='review_body', sentiment_column='star_
     plt.gca().invert_yaxis()
 
 
-    plt.savefig('Output/RAKE.png')
+    plt.savefig(output_path + 'RAKE.png')
     plt.close()
 
     # CountVectorizer for topic modeling
@@ -373,7 +374,7 @@ def RAKE_in_chunks(file_path, text_column='review_body', sentiment_column='star_
         plt.xticks(rotation=0)
 
 
-        plt.savefig('Output/Topic.png')
+        plt.savefig(output_path + 'Topic.png')
         plt.close()
 
     except ValueError as e:
@@ -381,7 +382,7 @@ def RAKE_in_chunks(file_path, text_column='review_body', sentiment_column='star_
 
 
 def LDA_topic_modeling_in_chunks(file_path, text_column='review_body', num_topics=5, num_keywords=10, chunk_size=10000,
-                                 max_chunks=None):
+                                 max_chunks=None, output_path='output/'):
     """
     Perform topic modeling on reviews using LDA with chunked processing for large datasets.
 
@@ -483,13 +484,13 @@ def LDA_topic_modeling_in_chunks(file_path, text_column='review_body', num_topic
     plt.tight_layout()
 
 
-    plt.savefig('Output/Topic_distribution.png')
+    plt.savefig(output_path + 'Topic_distribution.png')
     plt.close()
 
 
 def summarize_insights_and_visualize_in_chunks(
         file_path, text_column='review_body', sentiment_column='star_rating', num_keywords=10, chunk_size=10000,
-        max_chunks=None
+        max_chunks=None, output_path='output/'
 ):
     """
     Summarize actionable insights by extracting and visualizing top keywords for positive and negative sentiments,
@@ -581,7 +582,7 @@ def summarize_insights_and_visualize_in_chunks(
     plt.tight_layout()
 
 
-    plt.savefig('Output/Insights.png')
+    plt.savefig(output_path + 'Insights.png')
     plt.close()
 
     # Summarize actionable insights
@@ -600,6 +601,7 @@ def bigrams_by_sentiment_in_chunks(
         chunk_size=10000,
         max_chunks=None,
         num_bigrams=15,
+        output_path='output/'
 ):
     """
     Extract and plot bigram frequencies for positive and negative sentiments in chunks.
@@ -683,7 +685,7 @@ def bigrams_by_sentiment_in_chunks(
         plt.tight_layout()
 
 
-        plt.savefig('Output/Bigram.png')
+        plt.savefig(output_path + 'Bigram.png')
         plt.close()
 
     except Exception as e:
@@ -697,6 +699,7 @@ def trigrams_by_sentiment_in_chunks(
         chunk_size=10000,
         max_chunks=None,
         num_triograms=15,
+        output_path='output/'
 ):
     """
     Extract and plot triogram frequencies for positive and negative sentiments in chunks.
@@ -779,8 +782,7 @@ def trigrams_by_sentiment_in_chunks(
 
         plt.tight_layout()
 
-
-        plt.savefig('Output/Trigram.png')
+        plt.savefig(output_path + 'Trigram.png')
         plt.close()
 
     except Exception as e:
